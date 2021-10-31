@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+    integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista telefônica</title>
+  <style>
+    .modal-novo-contato {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      background-color: rgba(0, 0, 0, 0.267);
+      width: 100%;
+      height: 100%;
+    }
+    
+    .modal-novo-contato .modal-container {
+      width: 25vw;
+      min-width: 200px;
+      background-color: #fff;
+      border-radius: 15px;
+      padding: 20px 20px;
+    }
+    
+    #modal-header  {
+      border-bottom: 2px solid rgba(0, 0, 0, 0.329);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    
+    #modal-body {
+      margin-bottom: 10px;
+    }
+    
+    #modal-body div {
+      display: flex;
+      flex-direction: column;
+      padding: 5px;
+    }
+    
+    #modal-footer {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <script type="text/x-template" id="modalNovoContato">
+    <div class="modal-novo-contato animate__animated  animate__fadeIn">
+      <div class="modal-container">
+        <div class="modal-adicionar">
+          
+          <div id="modal-header">
+            <slot name="header"></slot>
+          </div>
+
+          <div id="modal-body">
+            <slot name="body"></slot>          
+          </div>
+
+          <div id="modal-footer">
+            <slot name="footer"></slot>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </script>
+
+  <div id="app" class="d-flex flex-column justify-content-center p-5">
+
+    <header class=" col-xs d-flex justify-content-between w-50 align-self-center">
+      <h1> Lista telefônica</h1>
+      <button class="btn btn-success" v-on:click="modalNovoContato = true">
+        <i class="fas fa-plus"></i>
+      </button>
+    </header>
+
+    <main class="align-self-center w-50 mt-5" v-show="listaTelefonica.length === 1">
+      <table class="table table-hover">
+        <thead>
+          <tr class="text-center">
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tr class="text-center" v-bind:class="item.isCapital" v-for="(item,index) in listaTelefonica" v-on:key="index">
+          <td>{{ item.nome }} </td>
+          <td>{{ item.telefone }} </td>
+          <td>
+            <button class="btn btn-primary" v-on:click="excluirContato(index)"> EXCLUIR </button>
+          </td>
+          <td>
+            <button class="btn btn-danger" v-on:click="modalEditar(index)"> EDITAR </button>
+          </td>
+        </tr>
+      </table>
+    </main>
+
+    <modal-novo-contato v-if="modalNovoContato">
+
+      <div slot="header">
+        <div>
+          <button slot="footer" class="btn-close" v-on:click="closeModalNovoContato"></button>
+        </div>
+        <h3 class="text-center">Novo contato</h3>
+      </div>
+
+      <div slot="body">
+        <div class="form-group">
+          <label for="nome">Nome</label>
+          <input type="text" class="form-control" id="nome" v-model.trim="nome" required>
+          <div class="invalid-feedback" v-if="alertNome.show">
+            {{ alertNome.value }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="telefone">Telefone</label>
+          <input type="text" class="form-control" id="telefone" v-model.trim="telefone" v-mask="'(##) ####-####'"
+            required>
+          <div class="invalid-feedback" v-if="alertTelefone.show">
+            {{ alertTelefone.value }}
+          </div>
+        </div>
+      </div>
+
+      <button slot="footer" type="submit" class="btn btn-secondary"
+        v-on:click.prevent="adicionarContato">Adicionar</button>
+
+    </modal-novo-contato>
+
+    <modal-novo-contato v-if="modalEditarContato">
+
+      <div slot="header">
+        <div>
+          <button slot="footer" class="btn-close" v-on:click="closeModalEditarContato"></button>
+        </div>
+        <h3 class="text-center">Editar contato</h3>
+      </div>
+
+      <div slot="body">
+        <div class="form-group">
+          <label for="nome">Nome</label>
+          <input type="text" class="form-control" id="nome" v-model.trim="nome" required>
+          <div class="invalid-feedback" v-if="alertNome.show">
+            {{ alertNome.value }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="telefone">Telefone</label>
+          <input type="text" class="form-control" id="telefone" v-model.trim="telefone" v-mask="'(##) ####-####'"
+            required>
+          <div class="invalid-feedback" v-if="alertTelefone.show">
+            {{ alertTelefone.value }}
+          </div>
+        </div>
+      </div>
+
+      <button slot="footer" class="btn btn-secondary" v-on:click="editarContato">Adicionar</button>
+
+    </modal-novo-contato>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/v-mask/dist/v-mask.min.js"></script>
+  <script>
+    Vue.component('modal-novo-contato', {
+      template: '#modalNovoContato'
+    })
+    Vue.use(VueMask.VueMaskPlugin)
+    new Vue({
+      el: '#app',
+      beforeMount() {
+        this.carregaLista()
+      },
+      data: () => ({
+        modalNovoContato: false,
+        modalEditarContato: false,
+        indexEditarContato: null,
+        listaTelefonica: [],
+        nome: null,
+        telefone: null,
+        alertNome: {
+          value: null,
+          show: true
+        },
+        alertTelefone: {
+          value: null,
+          show: true
+        },
+      }),
+      methods: {
+        carregaLista() {
+          let listaLocalStorage = localStorage.getItem('listaContato')
+
+          if (listaLocalStorage === null) return
+
+          this.listaTelefonica = JSON.parse(localStorage.getItem('listaContato'))
+
+        },
+        closeModalNovoContato() {
+          this.modalNovoContato = false
+          this.nome = null
+          this.telefone = null
+          this.alertNome.show = false
+          this.alertTelefone.show = false
+        },
+        closeModalEditarContato() {
+          this.modalEditarContato = false
+          this.nome = null
+          this.telefone = null
+          this.alertNome.show = false
+          this.alertTelefone.show = false
+        },
+        adicionarContato() {
+          const nome = this.nome
+          const telefone = this.telefone
+          const ddd = telefone.substring(1, 3)
+
+          if (!this.validaForm()) return
+
+          if (ddd == 11) {
+            this.listaTelefonica.push({
+              nome: nome,
+              telefone: telefone,
+              isCapital: {
+                'table-primary': true,
+              }
+            })
+          } else {
+            this.listaTelefonica.push({
+              nome: nome,
+              telefone: telefone,
+              isCapital: {
+                'table-primary': false,
+              }
+            })
+          }
+
+          localStorage.setItem('listaContato', JSON.stringify(this.listaTelefonica))
+
+          this.closeModalNovoContato()
+        },
+        excluirContato(index) {
+          const getListaStorage = JSON.parse(localStorage.getItem('listaContato'))
+
+          this.listaTelefonica.splice(index, 1)
+
+          localStorage.setItem('listaContato', JSON.stringify(this.listaTelefonica))
+
+        },
+        modalEditar(index) {
+          let contato = this.listaTelefonica[index]
+
+          this.modalEditarContato = true
+          this.indexEditarContato = index
+
+          this.nome = contato.nome
+          this.telefone = contato.telefone
+        },
+        editarContato() {
+          const index = this.indexEditarContato
+          const ddd = this.telefone.substring(1, 3)
+
+          if (!this.validaForm()) return
+
+          if (ddd == 11) {
+            Vue.set(this.listaTelefonica, index, {
+              nome: this.nome,
+              telefone: this.telefone,
+              isCapital: {
+                'table-primary': true,
+              }
+            })
+          } else {
+            Vue.set(this.listaTelefonica, index, {
+              nome: this.nome,
+              telefone: this.telefone,
+              isCapital: {
+                'table-primary': false,
+              }
+            })
+          }
+
+          localStorage.setItem('listaContato', JSON.stringify(this.listaTelefonica))
+
+          this.closeModalEditarContato()
+        },
+        validaForm() {
+          const nome = this.nome
+          const telefone = this.telefone
+          let isVal = true
+
+          if (!nome) {
+            this.alertNome = {
+              value: '*É necessário inserir o nome',
+              show: true
+            }
+            isVal = false
+          }
+
+          if (!telefone) {
+            this.alertTelefone = {
+              value: '*É necessário inserir o número de telefone',
+              show: true
+            }
+            isVal = false
+          }
+
+          let nomeSplit = nome.split(' ')
+
+          if (nomeSplit[1] === undefined) {
+            this.alertNome = {
+              value: '*É necessário ter no mínimo duas palavras',
+              show: true
+            }
+            isVal = false
+          }
+
+          if (nomeSplit.length < 2) {
+            if (nomeSplit[0].length < 3 || nomeSplit[1].length < 3) {
+              this.alertNome = {
+                value: '*É necessário ter duas palavras de no mínimo 3 letras cada',
+                show: true
+              }
+              isVal = false
+            }
+          }
+
+          if (telefone.length < 14) {
+            this.alertTelefone = {
+              value: '*Número de telefone incompleto',
+              show: true
+            }
+            isVal = false
+          }
+
+          return isVal
+        },
+      }
+    })
+  </script>
+
+</body>
+
+</html>
